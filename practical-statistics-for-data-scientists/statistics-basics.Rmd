@@ -38,6 +38,8 @@ print(state.head())
 ```
 
 <!-- #region pycharm={"name": "#%% md\n"} -->
+## Estimates of Location (central tendency)
+
 Mean, trimmed mean, and median for population.
 (Note that mean > trimmed mean > median)
 
@@ -73,4 +75,153 @@ murdrate_wmean = np.average(state['Murder.Rate'], weights=state['Population'])
 murdrate_wmedian = wquantiles.median(state['Murder.Rate'], weights=state['Population'])
 print('Weighted mean: ', murdrate_wmean, '\nWeighted median: ', murdrate_wmedian)
 print('Cf. mean: ', state['Murder.Rate'].mean())
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+## Estimates of variability
+
+The pandas data frame provides methods for calculating standard deviation and
+quantiles. Using the quantiles, we can easily determine the IQR. For the robust MAD,
+we use the function `robust.scale.mad` from the `statsmodels` package.
+
+Note that stdev (since it is sensible to outliers) is almost twice large as MAD.
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+from statsmodels import robust
+
+print(
+    'Stdev: ', state['Population'].std(),
+    '\nIQR: ', pop.quantile(0.75) - pop.quantile(0.25),
+    '\nRobust MAD: ', robust.scale.mad(pop)
+)
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+## Exploring data distribution
+
+Percentiles 
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+state['Murder.Rate'].quantile([0.05, 0.25, 0.5, 0.75, 0.95])
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+From the following **box-plot** we see 
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+ax = (state['Population']/1_000_000).plot.box()
+ax.set_ylabel('Population (millions)')
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+For a **frequency table** of a variable, we need to divide up the variable range into equally spaced segments and determine how many values fall within each segment.
+The function `pandas.cut` creates a series that maps the values into the segments.
+(Note that the bins/value counts are not in sorted order!)
+
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+binnedPopulation = pd.cut(state['Population'], 10, include_lowest=True)
+binnedPopulation.value_counts()
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+A **histogram** is a way to visualize a frequency table, with bins on the x-axis and the
+data count on the y-axis.
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+ax = (state['Population'] / 1_000_000).plot.hist(figsize=(8, 4))
+ax.set_xlabel('Population (millions)')
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+A **density plot** can be thought of as a smoothed histogram,
+although it is typically computed directly from the data through a kernel density estimate.
+Note: 
+
+- Plot functions often take an optional axis **`ax`** argument, which will cause the
+plot to be added to the same graph.
+- A key distinction from the previous histogram is the scale of the y-axis: a
+density plot corresponds to plotting the histogram **as a proportion rather than counts**
+- So, e.g., if murder rate in [2,3] has 10 occurrences among the 50 states, its frequency proportion is approximately 10/50, namely 0.20
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+state['Murder.Rate'].plot.hist()
+```
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+ax = state['Murder.Rate'].plot.hist(density=True, xlim=[0,12], bins=range(1,12))
+state['Murder.Rate'].plot.density(ax=ax) # NB: ax=ax causes the new plot to be added to the existing plot
+ax.set_xlabel('Murder Rate (per 100,000)')
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+## Exploring binary and categorical data
+
+Example: Percentage of delays by cause at Dallas/Fort Worth Airport
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+dfw = pd.read_csv('data/dfw_airline.csv')
+dfw
+```
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+ax = dfw.transpose().plot.bar(figsize=(4, 4), legend=False)
+ax.set_xlabel('Cause of delay')
+ax.set_ylabel('Count')
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+## Correlation
+
+We consider as an example data on telecommunication stocks from July 2012 through June 2015.
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+import seaborn as sns
+
+sp500_sym = pd.read_csv('data/sp500_sectors.csv')
+sp500_px = pd.read_csv('data/sp500_data.csv.gz',index_col=0)
+sp500_px.head()
+```
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+sp500_sym.head()
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+We use a heatmap to represent a correlation matrix.
+
+The following shows the correlation between the daily returns for major exchange-traded funds (ETFs).
+The ETFs for the S&P 500 (SPY) and the Dow Jones Index (DIA) have a high correla‐
+tion. Similarly, the QQQ and the XLK, composed mostly of technology companies,
+are positively correlated. Defensive ETFs, such as those tracking gold prices (GLD),
+oil prices (USO), or market volatility (VXX), tend to be weakly or negatively correla‐
+ted with the other ETFs.
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+etfs = sp500_px.loc[sp500_px.index > '2012-07-01',
+sp500_sym[sp500_sym['sector'] == 'etf']['symbol']]
+sns.heatmap(etfs.corr(), vmin=-1, vmax=1,
+cmap=sns.diverging_palette(20, 220, as_cmap=True))
+```
+
+<!-- #region pycharm={"name": "#%% md\n"} -->
+**Scatter plots**
+<!-- #endregion -->
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+ax = state.plot.scatter(x='Population', y='Murder.Rate')
+```
+
+```{python pycharm={'name': '#%%\n', 'is_executing': False}}
+sns.heatmap(state.corr())
+
 ```
